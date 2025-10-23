@@ -1,4 +1,4 @@
-// file_processor.h
+// src/file_processor.h
 
 #ifndef FILE_PROCESSOR_H
 #define FILE_PROCESSOR_H
