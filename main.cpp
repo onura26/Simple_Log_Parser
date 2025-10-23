@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#include <regex>
 
 // Constants
 constexpr int MIN_REQUIRED_ARGS = 2; // Minimum required arguments: filename and at least one search pattern
@@ -23,6 +24,7 @@ struct ProgramOptions
     std::string inputFilePath;
     std::vector<std::string> searchPatterns;
     bool caseInsensitive = false;
+    bool useRegex = false;
 };
 
 // Function Declarations
@@ -56,20 +58,28 @@ ProgramOptions parse_arguments(int argc, char* argv[])
 {
     if (argc <= MIN_REQUIRED_ARGS)
     {
-        throw std::runtime_error("Usage: " + std::string(argv[0]) + " <input_file> <search_pattern1> [search_pattern2 ...] [-i]");
+        throw std::runtime_error("Usage: " + std::string(argv[0]) + " <input_file> <search_pattern1> [search_pattern2 ...] [-i] [-r]");
     }
 
     ProgramOptions options;
     options.inputFilePath = argv[1];
     options.caseInsensitive = false;
+    options.useRegex = false;
 
     for (int i = FIRST_PATTERN_ARG_INDEX; i < argc; ++i)
     {
         std::string arg = argv[i];
+
         if (arg == "-i")
         {
             options.caseInsensitive = true;
         }
+
+        if (arg == "-r")
+        {
+            options.useRegex = true;
+        }
+
         else
         {
             options.searchPatterns.push_back(arg);
@@ -81,6 +91,22 @@ ProgramOptions parse_arguments(int argc, char* argv[])
         for (auto& pattern : options.searchPatterns)
         {
             pattern = to_lower(pattern);
+        }
+    }
+
+    // Regex validation 
+    if (options.useRegex)
+    {
+        for (const auto& pattern : options.searchPatterns)
+        {
+            try
+            {
+                std::regex testRegex(pattern, options.caseInsensitive ? std::regex::icase : std::regex::ECMAScript);
+            }
+            catch (const std::regex_error& e)
+            {
+                throw std::runtime_error("Invalid regex pattern: " + pattern + ". Error: " + e.what());
+            }
         }
     }
 
@@ -100,12 +126,59 @@ int search_in_file(const ProgramOptions& options)
         throw std::runtime_error("Failed to open file: " + options.inputFilePath);
     }
 
+    // Compile regex patterns if needed
+    std::vector<std::regex> regexPatterns;
+    if (options.useRegex)
+    {
+        for (const auto& pattern : options.searchPatterns)
+        {
+            regexPatterns.emplace_back(pattern, options.caseInsensitive ? std::regex::icase : std::regex::ECMAScript);
+        }
+    }
+
     std::string line;
     int matchCount = 0;
     
     while (std::getline(inputFile, line))
     {
-        process_line_and_count(line, options.searchPatterns, options.caseInsensitive, matchCount);
+        bool found {false};
+
+        if (options.useRegex)
+        {
+            // Regex search
+            for (const auto& regexPattern : regexPatterns)
+            {
+                if (std::regex_search(line, regexPattern))
+                {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        else
+        {
+            // Plain string search
+            const std::string searchLine = options.caseInsensitive ? to_lower(line) : line;
+
+            for (const auto& pattern : options.searchPatterns)
+            {
+                const std::string searchPattern = options.caseInsensitive ? to_lower(pattern) : pattern;
+
+                if (searchLine.find(searchPattern) != std::string::npos)
+                {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (found)
+        {
+            std::string color = get_log_level_color(to_lower(line));
+            std::cout << color << "[" << matchCount << "] " << line << RESET_COLOR << '\n';
+            ++matchCount;
+        }
     }
 
     std::cout << "\nTotal matches: " << matchCount << " lines" << std::endl;
@@ -133,6 +206,21 @@ void process_line_and_count(const std::string& line, const std::vector<std::stri
         }
     }
 }
+
+void print_regex_matches(const std::string& line, 
+                        const std::regex& regexPattern, 
+                        const std::string& regexPatternString)
+{
+    std::smatch matches;
+    std::cout << "Regular expression: " << regexPatternString << std::endl;
+
+    if (std::regex_search(line, matches, regexPattern))
+    {
+        // Print lines that contain matches
+        // Need to call process_line_and_count to handle line and counting 
+    }
+}
+
 
 // Helper Functions
 std::string get_log_level_color(const std::string& line)
