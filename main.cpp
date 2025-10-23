@@ -29,7 +29,7 @@ struct ProgramOptions
 ProgramOptions parse_arguments(int argc, char* argv[]);
 std::string get_log_level_color(const std::string& line);
 std::string to_lower(const std::string& str);
-bool process_line_and_count(const std::string& line, const std::vector<std::string>& patterns, 
+void process_line_and_count(const std::string& line, const std::vector<std::string>& patterns, 
                             bool caseInsensitive, int& matchCount);
 int search_in_file(const ProgramOptions& options);
 
@@ -76,6 +76,14 @@ ProgramOptions parse_arguments(int argc, char* argv[])
         }
     }
 
+    if (options.caseInsensitive)
+    {
+        for (auto& pattern : options.searchPatterns)
+        {
+            pattern = to_lower(pattern);
+        }
+    }
+
     if (options.searchPatterns.empty())
     {
         throw std::runtime_error("No search pattern(s) provided. At least one pattern is required.");
@@ -105,7 +113,7 @@ int search_in_file(const ProgramOptions& options)
     return EXIT_SUCCESS;
 }
 
-bool process_line_and_count(const std::string& line, const std::vector<std::string>& patterns, 
+void process_line_and_count(const std::string& line, const std::vector<std::string>& patterns, 
                     bool caseInsensitive, int& matchCount)
 {
     const std::string lowerLine = caseInsensitive ? to_lower(line) : line;
@@ -113,22 +121,17 @@ bool process_line_and_count(const std::string& line, const std::vector<std::stri
     // Loop through each pattern to check for a match
     for (const auto& pattern : patterns)
     {
-        // Prepare the pattern for case insensitive search if needed
-        const std::string target = caseInsensitive ? to_lower(pattern) : pattern;
-
-        bool found = (lowerLine.find(target) != std::string::npos);
+        bool found = (lowerLine.find(pattern) != std::string::npos);
 
         if (found)
         {
             // Get color based on log level
             std::string color = get_log_level_color(lowerLine);
-            std::cout << color << "[" << matchCount << "] " << line << RESET_COLOR << std::endl;
             ++matchCount;
-            return true; // Return early on first match
+            std::cout << color << "[" << matchCount << "] " << line << RESET_COLOR << '\n';
+            return; // Avoid counting the same line multiple times
         }
     }
-
-    return false; // No match found
 }
 
 // Helper Functions
