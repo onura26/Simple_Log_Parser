@@ -1,0 +1,20 @@
+# Compiled files
+*.o
+*.out
+logparser
+a.out
+
+# Build dirs
+build/
+bin/
+
+# IDE
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Test logs (keep sample)
+*.log
+!sample_log_file.txt
