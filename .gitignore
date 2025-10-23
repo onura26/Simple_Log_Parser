@@ -18,3 +18,4 @@ bin/
 # Test logs (keep sample)
 *.log
 !sample_log_file.txt
+output.txt
