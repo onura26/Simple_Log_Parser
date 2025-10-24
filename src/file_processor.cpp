@@ -10,6 +10,40 @@
 
 int search_in_file(const ProgramOptions& options)
 {
+    /*
+    * CONTEXT LINES ALGORITHM 
+    * 
+    * This function implements grep-style context lines (-A, -B, -C flags).
+    * 
+    * 1. Ring Buffer (Before-Context):
+    *   - Continously stores the last N lines in a deque (instead of vector for faster operations)
+    *   - When match found -> dump buffer, then clear it
+    *   - Deque has O(1) for push_back/pop_front 
+    * 
+    * 2. Countdown Timer (After-Context):
+    *   - After a match, print next N lines regardless of pattern
+    *   - Decrements counter each line until it reaches zero
+    * 
+    * 3. Deduplication:
+    *   - Tracks last printed line number to avoid duplicates
+    *   - Handles overlapping contexts when matches are close together
+    * 
+    * 4. Separators:
+    *   - Prints "--" between close match groups (just like grep)
+    * 
+    * Ex:
+    *   ./logparser log.txt "ERROR" -B 2 -A 1
+    * 
+    *   Output:
+    *   [C:L18] line before match     ← before context (dim)
+    *   [C:L19] line before match     ← before context (dim)
+    *   [0:L20] ERROR: actual match   ← match (colored)
+    *   [C:L21] line after match      ← after context (dim)
+    *   --
+    *   [C:L45] line before match     ← next match group
+    *   [1:L46] ERROR: another match
+    */
+
     std::ifstream inputFile(options.inputFilePath);
 
     if (!inputFile.is_open())
@@ -40,13 +74,14 @@ int search_in_file(const ProgramOptions& options)
     }
 
     // Context lines implementation
+    // Ring buffer for before-context lines (-B flag)
     std::deque<std::pair<int, std::string>> beforeBuffer;
 
-    int afterContextRemaining {0};
+    int afterContextRemaining {0}; // Countdown timer for after-context lines (-A flag)
 
-    int lastPrintedLine {-1};
+    int lastPrintedLine {-1}; // Deduplication tracker that prevents printing the same line twice
 
-    bool needsSeparator {false};
+    bool needsSeparator {false}; // Separator flag 
 
     std::string line;
     int matchCount = 0;
@@ -109,10 +144,72 @@ int search_in_file(const ProgramOptions& options)
 
         if (found)
         {
+            // Step 1: Print separator between non-contigous matches
+            // Ex: Match at line 10, last printed line was 7, need separator
+            if (needsSeparator && lastPrintedLine != -1 && lineNumber - lastPrintedLine > 1)
+            {
+                std::cout << "--\n";
+            }
+
+            // Step 2: Dump ring buffer (before context)
+            // Loop through stored lines in beforeBuffer
+            for (const auto& [bufLineNum, bufLine] : beforeBuffer)
+            {
+                // Deduplication check
+                // If matches are close, avoid re-printing same context lines
+                if (bufLineNum > lastPrintedLine)
+                {
+                    // Ex: lastPrintedLine = 10, bufLineNum = 11 -> bufLineNum annexes lastPrintedLine after it was printed
+                    std::cout << CONTEXT_COLOR << "[C:L" << bufLineNum << "] " << bufLine << RESET_COLOR << '\n';
+                    lastPrintedLine = bufLineNum;
+                }
+            }
+
+            // Step 3: Print the actual matching line (colored by log level)
             LogLevel level = detect_log_level(line, options.logFormat);
             auto color = get_log_level_color(level);
             std::cout << color << "[" << matchCount << ":L" << lineNumber <<"] " << line << RESET_COLOR << '\n';
+            lastPrintedLine = lineNumber;
             ++matchCount;
+
+            // Step 4: Set after context counter
+            // Set counter to print next N lines as context after the match
+            afterContextRemaining = options.afterContext;
+
+            // Step 5: Clear before buffer
+            // Since they are printed, we won't need them anymore. Let's kill them!
+            beforeBuffer.clear();
+
+            // Step 6: Reset separator flag, since we might have more matches right after
+            needsSeparator = true;
+        }
+
+        else if (afterContextRemaining > 0)
+        {
+            // After context processing
+            if (lineNumber > lastPrintedLine) // Deduplication check
+            {
+                std::cout << CONTEXT_COLOR << "[C:L" << lineNumber << "] " << line << RESET_COLOR << '\n';
+                lastPrintedLine = lineNumber;
+            }
+            --afterContextRemaining; // Decrement counter 
+        }
+
+        else
+        {
+            // Store line in before buffer
+            if (options.beforeContext > 0)
+            {
+                beforeBuffer.push_back({lineNumber, line}); // O(1)
+                
+                // Maintain buffer size (sliding window)
+                // Ex: buffer size=3, we have 4 lines, pop the oldest (front)
+                // [line10, line11, line12] + line13 -> [line11, line12, line13]
+                if (static_cast<int>(beforeBuffer.size()) > options.beforeContext)
+                {
+                    beforeBuffer.pop_front(); // O(1)
+                }
+            }
         }
     }
 

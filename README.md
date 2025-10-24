@@ -79,11 +79,29 @@ g++ -std=c++17 main.cpp src/*.cpp -o logparser
 
 Lines without timestamps (stack traces, multi-line messages, etc.) are included if they match the search pattern, even if date filtering is enabled.
 
+**Log Format Support**
+```bash
+# Specify log format for better detection
+./logparser java.log "Exception" -f java
+./logparser syslog.log "critical" -f syslog
+```
+
+**Context Lines (grep-style)**
+```bash
+# show 3 lines before and after each match
+./logparser server.log "ERROR" -C 3
+
+# asymmetric context
+./logparser server.log "ERROR" -B 2 -A 5
+```
+
 ## Example Output
 ```
 [0:L20] 2025-10-21 08:34:42.100 [ERROR] [SecurityService] Failed to notify admin: SMTP connection timeout
+--
 [1:L32] 2025-10-21 08:38:12.111 [ERROR] [OrderService] Database timeout while updating orderId=1023
 [2:L33] 2025-10-21 08:38:12.112 [ERROR] [OrderService] Stack trace:
+--
 [3:L47] 2025-10-21 08:47:10.223 [ERROR] [PaymentService] Payment declined: transactionId=TXN98455
 
 Total Matches: 4
@@ -93,7 +111,7 @@ Total Matches: 4
 - [x] Version 1.0 - Basic pattern search, colored display
 - [x] Version 1.1 - Case-insensitive search, regex support
 - [x] Version 1.2 - Date range filtering
-- [ ] Version 1.3
+- [x] Version 1.3 - Context lines & log format support
 - [ ] Version 1.4
 - [ ] Version 1.5
 - [ ] Version 1.6
