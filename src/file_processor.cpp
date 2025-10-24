@@ -16,6 +16,18 @@ int search_in_file(const ProgramOptions& options)
         throw std::runtime_error("Failed to open file: " + options.inputFilePath);
     }
 
+    // Precompute lowercase patterns if case insensitive
+    std::vector<std::string> lowerCasePatterns;
+    if (options.caseInsensitive && !options.useRegex)
+    {
+        lowerCasePatterns.reserve(options.searchPatterns.size());
+
+        for (const auto& pattern : options.searchPatterns)
+        {
+            lowerCasePatterns.push_back(to_lower(pattern));
+        }
+    }
+
     // Compile regex patterns if needed
     std::vector<std::regex> regexPatterns;
     if (options.useRegex)
@@ -28,9 +40,11 @@ int search_in_file(const ProgramOptions& options)
 
     std::string line;
     int matchCount = 0;
+    int lineNumber = 0;
 
     while (std::getline(inputFile, line))
     {
+        ++lineNumber;
         bool found = false;
 
         if (options.useRegex)
@@ -48,14 +62,12 @@ int search_in_file(const ProgramOptions& options)
 
         else
         {
-            // Simple string search
             const std::string searchLine = options.caseInsensitive ? to_lower(line) : line;
+            const auto& patternsToUse = options.caseInsensitive ? lowerCasePatterns : options.searchPatterns;
 
-            for (const auto& pattern : options.searchPatterns)
+            for (const auto& pattern : patternsToUse)
             {
-                const std::string searchPattern = options.caseInsensitive ? to_lower(pattern) : pattern;
-
-                if (searchLine.find(searchPattern) != std::string::npos)
+                if (searchLine.find(pattern) != std::string::npos)
                 {
                     found = true;
                     break;
@@ -65,9 +77,9 @@ int search_in_file(const ProgramOptions& options)
 
         if (found)
         {
-            ++matchCount;
             std::string color = get_log_level_color(to_lower(line));
-            std::cout << color << "[" << matchCount << "] " << line << RESET_COLOR << '\n';
+            std::cout << color << "[" << matchCount << ":L" << lineNumber <<"] " << line << RESET_COLOR << '\n';
+            ++matchCount;
         }
     }
 

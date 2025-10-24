@@ -12,10 +12,10 @@ const std::string RESET_COLOR = "\033[0m";
 
 std::string get_log_level_color(const std::string& line)
 {
-    if (line.find("error") != std::string::npos) { return RED_COLOR; }
-    if (line.find("warning") != std::string::npos || line.find("warn") != std::string::npos) { return YELLOW_COLOR; }
-    if (line.find("info") != std::string::npos) { return GREEN_COLOR; }
-    if (line.find("debug") != std::string::npos) { return BLUE_COLOR; }
+    if (line.find("[error]") != std::string::npos) { return RED_COLOR; }
+    if (line.find("[warning]") != std::string::npos || line.find("[warn]") != std::string::npos) { return YELLOW_COLOR; }
+    if (line.find("[info]") != std::string::npos) { return GREEN_COLOR; }
+    if (line.find("[debug]") != std::string::npos) { return BLUE_COLOR; }
     
     return RESET_COLOR;
 }
@@ -23,7 +23,8 @@ std::string get_log_level_color(const std::string& line)
 std::string to_lower(const std::string& str)
 {
     std::string result = str;
-    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    std::transform(result.begin(), result.end(), result.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
     
     return result;
 }
