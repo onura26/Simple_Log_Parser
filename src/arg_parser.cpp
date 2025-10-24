@@ -2,6 +2,7 @@
 
 #include "arg_parser.h"
 #include "date.h"
+#include "utils.h"
 #include <stdexcept>
 #include <regex>
 
@@ -10,7 +11,7 @@ ProgramOptions parse_arguments(int argc, char* argv[])
     if (argc <= MIN_REQUIRED_ARGS)
     {
         throw std::runtime_error("Usage: " + std::string(argv[0]) + 
-                                " <input_file> <search_pattern1> [search_pattern2 ...] [-i] [-r] [-from <date>] [-to <date>]");
+                                " <input_file> <search_pattern1> [search_pattern2 ...] [-f/--log-format] [<log_format>] [-i] [-r] [-from <date>] [-to <date>]");
     }
     
     ProgramOptions options;
@@ -64,6 +65,95 @@ ProgramOptions parse_arguments(int argc, char* argv[])
             options.toTime = parsed;
         }
 
+        else if (arg == "-f" || arg == "--log-format")
+        {
+            if (i + 1 >= argc)
+            {
+                throw std::runtime_error("Missing value after -f/--log-format flag.");
+            }
+            std::string formatStr = argv[++i];
+            if (formatStr == "generic") options.logFormat = LogFormats::GENERIC;
+            else if (formatStr == "syslog") options.logFormat = LogFormats::SYSLOG;
+            else if (formatStr == "java") options.logFormat = LogFormats::JAVA;
+            else if (formatStr == "android") options.logFormat = LogFormats::ANDROID;
+            else
+            {
+                throw std::runtime_error("Unknown log format: " + formatStr);
+            }
+        }
+        
+        else if (arg == "-A" || arg == "--after-context")
+        {
+            if (i + 1 >= argc)
+            {
+                throw std::runtime_error("Missing value after -A/--after-context flag.");
+            }
+
+            try
+            {
+                options.afterContext = std::stoi(argv[++i]);
+                if (options.afterContext < 0)
+                {
+                    throw std::runtime_error("After context (-A) value must be non-negative.");
+                }
+            }
+
+            catch (const std::exception&)
+            {
+                throw std::runtime_error("Invalid integer value for -A flag: " + std::string(argv[i]));
+            }
+        }
+
+        else if (arg == "-B" || arg == "--before-context")
+        {
+            if (i + 1 >= argc)
+            {
+                throw std::runtime_error("Missing value after -B/--before-context flag.");
+            }
+
+            try
+            {
+                options.beforeContext = std::stoi(argv[++i]);
+                if (options.beforeContext < 0)
+                {
+                    throw std::runtime_error("Before context (-B) value must be non-negative.");
+                }
+            }
+
+            catch (const std::exception&)
+            {
+                throw std::runtime_error("Invalid integer value for -B flag: " + std::string(argv[i]));
+            }
+        }
+
+        else if (arg == "-C" || arg == "--context")
+        {
+            if (i + 1 >= argc)
+            {
+                throw std::runtime_error("Missing value after -C/--context flag.");
+            }
+
+            try
+            {
+                int contextValue {std::stoi(argv[++i])};
+                if (contextValue < 0)
+                {
+                    throw std::runtime_error("Context (-C) value must be non-negative.");
+                    if (contextValue < 0)
+                    {
+                        throw std::runtime_error("Context (-C) value must be non-negative.");
+                    }
+                    options.beforeContext = contextValue;
+                    options.afterContext = contextValue;
+                }
+            }
+
+            catch (const std::exception&)
+            {
+                throw std::runtime_error("Invalid integer value for -C flag: " + std::string(argv[i]));
+            }
+        }
+
         else
         {
             options.searchPatterns.push_back(arg);
@@ -90,6 +180,9 @@ ProgramOptions parse_arguments(int argc, char* argv[])
             }
         }
     }
+
+    // Optimization Update: Pre-detect date format from the log file
+    options.detectedDateFormat = detect_date_format_from_file(options.inputFilePath);
 
     return options;
 }

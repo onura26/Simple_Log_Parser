@@ -3,21 +3,60 @@
 #include "utils.h"
 #include <algorithm>
 
-// ANSI color codes
-const std::string RED_COLOR = "\033[31m";
-const std::string YELLOW_COLOR = "\033[33m";
-const std::string GREEN_COLOR = "\033[32m";
-const std::string BLUE_COLOR = "\033[34m";
-const std::string RESET_COLOR = "\033[0m";
-
-std::string get_log_level_color(const std::string& line)
+LogLevel detect_log_level(const std::string& line, const LogLevelConfig& config)
 {
-    if (line.find("[error]") != std::string::npos) { return RED_COLOR; }
-    if (line.find("[warning]") != std::string::npos || line.find("[warn]") != std::string::npos) { return YELLOW_COLOR; }
-    if (line.find("[info]") != std::string::npos) { return GREEN_COLOR; }
-    if (line.find("[debug]") != std::string::npos) { return BLUE_COLOR; }
-    
-    return RESET_COLOR;
+    std::string lowerLine = to_lower(line);
+
+    for (const auto& keyword : config.fatalKeywords) {
+        if (lowerLine.find(keyword) != std::string::npos) {
+            return LogLevel::FATAL;
+        }
+    }
+
+    for (const auto& keyword : config.errorKeywords) {
+        if (lowerLine.find(keyword) != std::string::npos) {
+            return LogLevel::ERROR;
+        }
+    }
+
+    for (const auto& keyword : config.warningKeywords) {
+        if (lowerLine.find(keyword) != std::string::npos) {
+            return LogLevel::WARNING;
+        }
+    }
+
+    for (const auto& keyword : config.infoKeywords) {
+        if (lowerLine.find(keyword) != std::string::npos) {
+            return LogLevel::INFO;
+        }
+    }
+
+    for (const auto& keyword : config.debugKeywords) {
+        if (lowerLine.find(keyword) != std::string::npos) {
+            return LogLevel::DEBUG;
+        }
+    }
+
+    return LogLevel::UNKNOWN;
+}
+
+
+const char* get_log_level_color(LogLevel level)
+{
+    switch (level) {
+        case LogLevel::FATAL:
+            return RED_COLOR;
+        case LogLevel::ERROR:
+            return RED_COLOR;
+        case LogLevel::WARNING:
+            return YELLOW_COLOR;
+        case LogLevel::INFO:
+            return GREEN_COLOR;
+        case LogLevel::DEBUG:
+            return BLUE_COLOR;
+        default:
+            return RESET_COLOR;
+    }
 }
 
 std::string to_lower(const std::string& str)

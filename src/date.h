@@ -22,6 +22,8 @@ LogDateFormat detect_date_format(const std::string& dateStr);
 std::optional<std::chrono::system_clock::time_point> parse_log_timestamp(
     const std::string& dateStr, 
     LogDateFormat format);
-std::optional<std::chrono::system_clock::time_point> extract_timestamp(const std::string& line);
+std::optional<std::chrono::system_clock::time_point> extract_timestamp(const std::string& line, LogDateFormat format);
+LogDateFormat detect_date_format_from_file(const std::string& filePath);
+
 
 #endif // DATE_H

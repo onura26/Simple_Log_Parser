@@ -39,17 +39,31 @@ int search_in_file(const ProgramOptions& options)
         }
     }
 
+    // Context lines implementation
+    std::deque<std::pair<int, std::string>> beforeBuffer;
+
+    int afterContextRemaining {0};
+
+    int lastPrintedLine {-1};
+
+    bool needsSeparator {false};
+
     std::string line;
     int matchCount = 0;
     int lineNumber = 0;
     int linesWithTimestamps = 0;
+
+    // Optimization Update: Use pre-detected date format
+    LogDateFormat dateFormat = options.detectedDateFormat;
+
+    constexpr const char* CONTEXT_COLOR = "\033[2m]"; // dim 
 
     while (std::getline(inputFile, line))
     {
         ++lineNumber;
 
         // Date range filtering
-        auto ts = extract_timestamp(line);
+        auto ts = extract_timestamp(line, dateFormat);
         if (ts)
         {
             ++linesWithTimestamps;
@@ -95,7 +109,8 @@ int search_in_file(const ProgramOptions& options)
 
         if (found)
         {
-            std::string color = get_log_level_color(to_lower(line));
+            LogLevel level = detect_log_level(line, options.logFormat);
+            auto color = get_log_level_color(level);
             std::cout << color << "[" << matchCount << ":L" << lineNumber <<"] " << line << RESET_COLOR << '\n';
             ++matchCount;
         }
