@@ -2,6 +2,7 @@
 
 #include "file_processor.h"
 #include "utils.h"
+#include "date.h"
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -41,10 +42,27 @@ int search_in_file(const ProgramOptions& options)
     std::string line;
     int matchCount = 0;
     int lineNumber = 0;
+    int linesWithTimestamps = 0;
 
     while (std::getline(inputFile, line))
     {
         ++lineNumber;
+
+        // Date range filtering
+        auto ts = extract_timestamp(line);
+        if (ts)
+        {
+            ++linesWithTimestamps;
+            if (options.fromTime && *ts < *(options.fromTime))
+            {
+                continue; // Skip lines before fromTime
+            }
+            if (options.toTime && *ts > *(options.toTime))
+            {
+                continue; // Skip lines after toTime
+            }
+        }
+
         bool found = false;
 
         if (options.useRegex)
@@ -81,6 +99,12 @@ int search_in_file(const ProgramOptions& options)
             std::cout << color << "[" << matchCount << ":L" << lineNumber <<"] " << line << RESET_COLOR << '\n';
             ++matchCount;
         }
+    }
+
+    // Warn user if date filtering was applied but no timestamps were found
+    if ((options.fromTime || options.toTime) && linesWithTimestamps == 0)
+    {
+        std::cerr << "\nWarning: Date filtering was requested, but no valid timestamps were found in the log lines.\n";
     }
 
     std::cout << "\nTotal Matches: " << matchCount << std::endl;

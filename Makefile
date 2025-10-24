@@ -1,14 +1,13 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra
 TARGET = logparser
-SRCS = main.cpp src/arg_parser.cpp src/file_processor.cpp src/utils.cpp
+SOURCES = main.cpp $(wildcard src/*.cpp)
+OBJECTS = $(SOURCES:.cpp=.o)
 
 all: $(TARGET)
 
-$(TARGET): $(SRCS)
-	$(CXX) $(CXXFLAGS) $(SRCS) -o $(TARGET)
+$(TARGET): $(SOURCES)
+	$(CXX) $(CXXFLAGS) $(SOURCES) -o $(TARGET)
 
 clean:
-	rm -f $(TARGET)
-
-.PHONY: all clean
+	rm -f $(TARGET) $(OBJECTS)

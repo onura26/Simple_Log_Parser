@@ -1,6 +1,7 @@
 // src/arg_parser.cpp
 
 #include "arg_parser.h"
+#include "date.h"
 #include <stdexcept>
 #include <regex>
 
@@ -8,7 +9,8 @@ ProgramOptions parse_arguments(int argc, char* argv[])
 {
     if (argc <= MIN_REQUIRED_ARGS)
     {
-        throw std::runtime_error("Usage: " + std::string(argv[0]) + " <input_file> <search_pattern1> [search_pattern2 ...] [-i] [-r]");
+        throw std::runtime_error("Usage: " + std::string(argv[0]) + 
+                                " <input_file> <search_pattern1> [search_pattern2 ...] [-i] [-r] [-from <date>] [-to <date>]");
     }
     
     ProgramOptions options;
@@ -24,10 +26,44 @@ ProgramOptions parse_arguments(int argc, char* argv[])
         {
             options.caseInsensitive = true;
         }
+
         else if (arg == "-r")
         {
             options.useRegex = true;
         }
+
+        else if (arg == "-from")
+        {
+            if (i + 1 >= argc)
+            {
+                throw std::runtime_error("Missing value after -from flag.");
+            }
+            std::string dateStr = argv[++i];
+            auto frmt = detect_date_format(dateStr);
+            auto parsed = parse_log_timestamp(dateStr, frmt);
+            if (!parsed)
+            {
+                throw std::runtime_error("Invalid date format for -from: " + dateStr);
+            }
+            options.fromTime = parsed;
+        }
+
+        else if (arg == "-to")
+        {
+            if (i + 1 >= argc)
+            {
+                throw std::runtime_error("Missing value after -to flag.");
+            }
+            std::string dateStr = argv[++i];
+            auto frmt = detect_date_format(dateStr);
+            auto parsed = parse_log_timestamp(dateStr, frmt);
+            if (!parsed)
+            {
+                throw std::runtime_error("Invalid date format for -to: " + dateStr);
+            }
+            options.toTime = parsed;
+        }
+
         else
         {
             options.searchPatterns.push_back(arg);
